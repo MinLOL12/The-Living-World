@@ -3,6 +3,7 @@ package net.livingworld.mixin;
 import net.livingworld.LivingWorld;
 import net.livingworld.world.gen.LivingTerrainDensityFunction;
 import net.minecraft.world.gen.chunk.ChunkGeneratorSettings;
+import net.minecraft.world.gen.chunk.GenerationShapeConfig;
 import net.minecraft.world.gen.densityfunction.DensityFunction;
 import net.minecraft.world.gen.noise.NoiseRouter;
 import org.spongepowered.asm.mixin.Final;
@@ -22,29 +23,27 @@ public class ChunkGeneratorSettingsMixin {
     private NoiseRouter noiseRouter;
 
     @Shadow @Final
-    private int bedrockFloorY;
+    private GenerationShapeConfig generationShapeConfig;
+
     @Shadow @Final
     private int seaLevel;
-    @Shadow @Final
-    private int minY;
-    @Shadow @Final
-    private int height;
 
     @Unique
     private static final AtomicLong livingworld$counter = new AtomicLong(0);
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void livingworld$patchNoiseRouter(CallbackInfo ci) {
-        if (noiseRouter == null) return;
-        if (minY != -64 || height != 384) return;
-        if (bedrockFloorY != -64) return;
+        if (noiseRouter == null || generationShapeConfig == null) return;
+        // Only patch overworld-shaped noise settings: full 384-block column
+        // starting at y=-64 with sea level 63.
+        if (generationShapeConfig.minimumY() != -64 || generationShapeConfig.height() != 384) return;
         if (seaLevel != 63) return;
 
         DensityFunction originalFinal = noiseRouter.finalDensity();
         long hint = livingworld$counter.getAndIncrement() ^ 0x5deece66dL;
         DensityFunction wrapped = new LivingTerrainDensityFunction(hint, originalFinal);
         this.noiseRouter = new NoiseRouter(
-                noiseRouter.barrenNoise(),
+                noiseRouter.barrierNoise(),
                 noiseRouter.fluidLevelFloodednessNoise(),
                 noiseRouter.fluidLevelSpreadNoise(),
                 noiseRouter.lavaNoise(),

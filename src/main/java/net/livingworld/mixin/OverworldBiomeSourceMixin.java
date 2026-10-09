@@ -2,6 +2,7 @@ package net.livingworld.mixin;
 
 import net.livingworld.config.LivingWorldConfig;
 import net.livingworld.world.climate.ClimateSampler;
+import net.livingworld.world.gen.WorldGenHandler;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.math.random.RandomSplitter;
@@ -9,8 +10,7 @@ import net.minecraft.util.math.random.Xoroshiro128PlusPlusRandom;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeKeys;
 import net.minecraft.world.biome.source.MultiNoiseBiomeSource;
-import net.minecraft.world.gen.noise.NoiseConfig;
-import org.spongepowered.asm.mixin.Final;
+import net.minecraft.world.biome.source.util.MultiNoiseUtil;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -18,13 +18,13 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Mixin(MultiNoiseBiomeSource.class)
 public abstract class OverworldBiomeSourceMixin {
-    @Shadow @Final
-    private List<RegistryEntry<Biome>> biomes;
+    @Shadow
+    public abstract Set<RegistryEntry<Biome>> getBiomes();
 
     @Unique
     private ClimateSampler livingworld$climateSampler;
@@ -32,11 +32,12 @@ public abstract class OverworldBiomeSourceMixin {
     private long livingworld$climateSeed = Long.MIN_VALUE;
 
     @Inject(method = "getBiome", at = @At("HEAD"), cancellable = true)
-    private void livingworld$overrideBiome(int biomeX, int biomeY, int biomeZ, NoiseConfig noiseConfig, CallbackInfoReturnable<RegistryEntry<Biome>> cir) {
+    private void livingworld$overrideBiome(int biomeX, int biomeY, int biomeZ, MultiNoiseUtil.MultiNoiseSampler noise, CallbackInfoReturnable<RegistryEntry<Biome>> cir) {
         LivingWorldConfig cfg = LivingWorldConfig.INSTANCE;
         if (!cfg.enableClimateBiomes) return;
 
-        long seed = noiseConfig.getLegacyWorldSeed();
+        long seed = WorldGenHandler.worldSeed();
+        if (seed == Long.MIN_VALUE) return; // world seed not known yet, keep vanilla placement
         if (livingworld$climateSampler == null || livingworld$climateSeed != seed) {
             Xoroshiro128PlusPlusRandom r = new Xoroshiro128PlusPlusRandom(seed ^ 0x9e3779b97f4a7c15L);
             RandomSplitter sp = r.nextSplitter();
@@ -52,14 +53,14 @@ public abstract class OverworldBiomeSourceMixin {
         double hum = livingworld$climateSampler.sampleHumidity(blockX, blockZ);
 
         RegistryKey<Biome> picked = pickBiome(temp, hum, blockY);
-        for (RegistryEntry<Biome> e : biomes) {
+        for (RegistryEntry<Biome> e : this.getBiomes()) {
             Optional<RegistryKey<Biome>> key = e.getKey();
             if (key.isPresent() && key.get() == picked) {
                 cir.setReturnValue(e);
                 return;
             }
         }
-        for (RegistryEntry<Biome> e : biomes) {
+        for (RegistryEntry<Biome> e : this.getBiomes()) {
             Optional<RegistryKey<Biome>> key = e.getKey();
             if (key.isPresent() && key.get() == BiomeKeys.PLAINS) {
                 cir.setReturnValue(e);
