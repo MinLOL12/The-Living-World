@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "net.livingworld.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "ChunkGeneratorSettingsMixin",
+    "OverworldBiomeSourceMixin"
+  ],
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
