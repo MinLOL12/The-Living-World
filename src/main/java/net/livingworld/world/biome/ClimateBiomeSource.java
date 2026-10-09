@@ -17,6 +17,7 @@ import net.minecraft.world.biome.source.BiomeSource;
 import net.minecraft.world.biome.source.util.MultiNoiseUtil;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * A minimal registered biome source kept for datapack use. The primary
@@ -42,6 +43,11 @@ public final class ClimateBiomeSource extends BiomeSource {
     @Override
     protected Codec<? extends BiomeSource> getCodec() {
         return CODEC;
+    }
+
+    @Override
+    protected Stream<RegistryEntry<Biome>> biomeStream() {
+        return Stream.of(plainsEntry);
     }
 
     @Override

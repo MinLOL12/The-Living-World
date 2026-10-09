@@ -9,23 +9,19 @@ import net.minecraft.util.math.random.RandomSplitter;
 import net.minecraft.util.math.random.Xoroshiro128PlusPlusRandom;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeKeys;
+import net.minecraft.world.biome.source.BiomeSource;
 import net.minecraft.world.biome.source.MultiNoiseBiomeSource;
 import net.minecraft.world.biome.source.util.MultiNoiseUtil;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Optional;
-import java.util.Set;
 
 @Mixin(MultiNoiseBiomeSource.class)
 public abstract class OverworldBiomeSourceMixin {
-    @Shadow
-    public abstract Set<RegistryEntry<Biome>> getBiomes();
-
     @Unique
     private ClimateSampler livingworld$climateSampler;
     @Unique
@@ -41,7 +37,7 @@ public abstract class OverworldBiomeSourceMixin {
         if (livingworld$climateSampler == null || livingworld$climateSeed != seed) {
             Xoroshiro128PlusPlusRandom r = new Xoroshiro128PlusPlusRandom(seed ^ 0x9e3779b97f4a7c15L);
             RandomSplitter sp = r.nextSplitter();
-            livingworld$climateSampler = new ClimateSampler(sp.split("lw_climate"), cfg);
+            livingworld$climateSampler = new ClimateSampler(sp, cfg);
             livingworld$climateSeed = seed;
         }
 
@@ -53,14 +49,14 @@ public abstract class OverworldBiomeSourceMixin {
         double hum = livingworld$climateSampler.sampleHumidity(blockX, blockZ);
 
         RegistryKey<Biome> picked = pickBiome(temp, hum, blockY);
-        for (RegistryEntry<Biome> e : this.getBiomes()) {
+        for (RegistryEntry<Biome> e : ((BiomeSource) (Object) this).getBiomes()) {
             Optional<RegistryKey<Biome>> key = e.getKey();
             if (key.isPresent() && key.get() == picked) {
                 cir.setReturnValue(e);
                 return;
             }
         }
-        for (RegistryEntry<Biome> e : this.getBiomes()) {
+        for (RegistryEntry<Biome> e : ((BiomeSource) (Object) this).getBiomes()) {
             Optional<RegistryKey<Biome>> key = e.getKey();
             if (key.isPresent() && key.get() == BiomeKeys.PLAINS) {
                 cir.setReturnValue(e);

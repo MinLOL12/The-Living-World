@@ -42,7 +42,7 @@ public final class LivingTerrainDensityFunction implements DensityFunction {
         Xoroshiro128PlusPlusRandom r = new Xoroshiro128PlusPlusRandom(seed + cfg.seedOffset);
         RandomSplitter sp = r.nextSplitter();
         CURRENT_WORLD_SEED = seed;
-        CURRENT_SAMPLER = new TerrainSampler(sp.split("lw_terrain"), cfg);
+        CURRENT_SAMPLER = new TerrainSampler(sp, cfg);
     }
 
     public static TerrainSampler sampler() {
