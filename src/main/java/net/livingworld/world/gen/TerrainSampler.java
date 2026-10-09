@@ -1,20 +1,20 @@
 package net.livingworld.world.gen;
 
 import net.livingworld.config.LivingWorldConfig;
-import net.minecraft.util.math.noise.NormalNoise;
+import net.minecraft.util.math.noise.DoublePerlinNoiseSampler;
 import net.minecraft.util.math.random.RandomSplitter;
 
 public final class TerrainSampler {
-    private final NormalNoise continentNoise;
-    private final NormalNoise mountainRangeNoise;
-    private final NormalNoise ridgeNoise;
-    private final NormalNoise plateauNoise;
-    private final NormalNoise hillsNoise;
-    private final NormalNoise detailNoise;
-    private final NormalNoise erosionNoise;
-    private final NormalNoise riverNoise;
-    private final NormalNoise riverNoise2;
-    private final NormalNoise valleyNoise;
+    private final DoublePerlinNoiseSampler continentNoise;
+    private final DoublePerlinNoiseSampler mountainRangeNoise;
+    private final DoublePerlinNoiseSampler ridgeNoise;
+    private final DoublePerlinNoiseSampler plateauNoise;
+    private final DoublePerlinNoiseSampler hillsNoise;
+    private final DoublePerlinNoiseSampler detailNoise;
+    private final DoublePerlinNoiseSampler erosionNoise;
+    private final DoublePerlinNoiseSampler riverNoise;
+    private final DoublePerlinNoiseSampler riverNoise2;
+    private final DoublePerlinNoiseSampler valleyNoise;
     private final double continentalScale;
     private final double mountainScale;
     private final double cfgScale;
@@ -34,16 +34,16 @@ public final class TerrainSampler {
         this.largeMountains = cfg.enableLargeMountains;
         this.floodplains = cfg.enableFloodplains;
 
-        this.continentNoise = NormalNoise.create(splitter.split("lw_continent"), -10, 1.0);
-        this.mountainRangeNoise = NormalNoise.create(splitter.split("lw_mountain_range"), -9, 1.0);
-        this.ridgeNoise = NormalNoise.create(splitter.split("lw_ridge"), -8, 1.0);
-        this.plateauNoise = NormalNoise.create(splitter.split("lw_plateau"), -9, 1.0);
-        this.hillsNoise = NormalNoise.create(splitter.split("lw_hills"), -7, 1.0);
-        this.detailNoise = NormalNoise.create(splitter.split("lw_detail"), -6, 1.0);
-        this.erosionNoise = NormalNoise.create(splitter.split("lw_erosion"), -8, 1.0);
-        this.riverNoise = NormalNoise.create(splitter.split("lw_river"), -9, 1.0);
-        this.riverNoise2 = NormalNoise.create(splitter.split("lw_river2"), -8, 1.0);
-        this.valleyNoise = NormalNoise.create(splitter.split("lw_valley"), -8, 1.0);
+        this.continentNoise = DoublePerlinNoiseSampler.create(splitter.split("lw_continent"), -10, 1.0);
+        this.mountainRangeNoise = DoublePerlinNoiseSampler.create(splitter.split("lw_mountain_range"), -9, 1.0);
+        this.ridgeNoise = DoublePerlinNoiseSampler.create(splitter.split("lw_ridge"), -8, 1.0);
+        this.plateauNoise = DoublePerlinNoiseSampler.create(splitter.split("lw_plateau"), -9, 1.0);
+        this.hillsNoise = DoublePerlinNoiseSampler.create(splitter.split("lw_hills"), -7, 1.0);
+        this.detailNoise = DoublePerlinNoiseSampler.create(splitter.split("lw_detail"), -6, 1.0);
+        this.erosionNoise = DoublePerlinNoiseSampler.create(splitter.split("lw_erosion"), -8, 1.0);
+        this.riverNoise = DoublePerlinNoiseSampler.create(splitter.split("lw_river"), -9, 1.0);
+        this.riverNoise2 = DoublePerlinNoiseSampler.create(splitter.split("lw_river2"), -8, 1.0);
+        this.valleyNoise = DoublePerlinNoiseSampler.create(splitter.split("lw_valley"), -8, 1.0);
     }
 
     public double sampleHeight(int blockX, int blockZ) {

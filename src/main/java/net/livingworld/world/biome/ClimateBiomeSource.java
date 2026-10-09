@@ -1,58 +1,52 @@
 package net.livingworld.world.biome;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.livingworld.LivingWorld;
-import net.livingworld.config.LivingWorldConfig;
-import net.livingworld.world.climate.ClimateSampler;
+import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
+import net.minecraft.registry.RegistryEntryLookup;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.RegistryOps;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.random.RandomSplitter;
-import net.minecraft.util.math.random.Xoroshiro128PlusPlusRandom;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeKeys;
 import net.minecraft.world.biome.source.BiomeSource;
 import net.minecraft.world.biome.source.util.MultiNoiseUtil;
-import net.minecraft.world.gen.noise.NoiseConfig;
 
-import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * A minimal registered biome source kept for datapack use. The primary
+ * climate-driven biome placement is done by the overworld
+ * {@code MultiNoiseBiomeSource} mixin for maximum compatibility.
+ */
 public final class ClimateBiomeSource extends BiomeSource {
-    public static final Codec<ClimateBiomeSource> CODEC = Codec.LONG.fieldOf("seed").xmap(ClimateBiomeSource::new, s -> s.seed).codec();
+    public static final Codec<ClimateBiomeSource> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            RegistryOps.getEntryLookupCodec(RegistryKeys.BIOME),
+            Codec.LONG.fieldOf("seed").forGetter(source -> source.seed)
+    ).apply(instance, (biomeLookup, seed) ->
+            new ClimateBiomeSource(biomeLookup.getOrThrow(BiomeKeys.PLAINS), seed)));
 
-    public static final Factory TYPE = new Factory() {
-        @Override public Codec<? extends BiomeSource> codec() { return CODEC; }
-        @Override public BiomeSource withSeed(long seed) { return new ClimateBiomeSource(seed); }
-    };
-
+    private final RegistryEntry<Biome> plainsEntry;
     private final long seed;
-    private transient ClimateSampler climate;
 
-    private ClimateBiomeSource(long seed) {
-        super(new ArrayList<>());
+    private ClimateBiomeSource(RegistryEntry<Biome> plainsEntry, long seed) {
+        super();
+        this.plainsEntry = plainsEntry;
         this.seed = seed;
     }
 
     @Override
-    protected Codec<? extends BiomeSource> getCodec() { return CODEC; }
-
-    @Override
-    public BiomeSource withSeed(long seed) { return new ClimateBiomeSource(seed); }
-
-    @Override
-    public void setNoiseConfig(NoiseConfig noiseConfig) {
-        super.setNoiseConfig(noiseConfig);
-        LivingWorldConfig cfg = LivingWorldConfig.INSTANCE;
-        Xoroshiro128PlusPlusRandom r = new Xoroshiro128PlusPlusRandom(noiseConfig.getLegacyWorldSeed() ^ 0x9e3779b97f4a7c15L);
-        RandomSplitter sp = r.nextSplitter();
-        this.climate = new ClimateSampler(sp.split("lw_climate"), cfg);
+    protected Codec<? extends BiomeSource> getCodec() {
+        return CODEC;
     }
 
     @Override
-    public RegistryEntry<Biome> getBiome(int biomeX, int biomeY, int biomeZ, NoiseConfig noiseConfig) {
-        return RegistryEntry.of(BiomeKeys.PLAINS);
+    public RegistryEntry<Biome> getBiome(int biomeX, int biomeY, int biomeZ, MultiNoiseUtil.MultiNoiseSampler noise) {
+        return plainsEntry;
     }
 
     @Override
@@ -61,6 +55,6 @@ public final class ClimateBiomeSource extends BiomeSource {
     }
 
     public static void register() {
-        Registry.register(Registry.BIOME_SOURCE, new Identifier(LivingWorld.MOD_ID, "climate"), TYPE);
+        Registry.register(Registries.BIOME_SOURCE, new Identifier(LivingWorld.MOD_ID, "climate"), CODEC);
     }
 }

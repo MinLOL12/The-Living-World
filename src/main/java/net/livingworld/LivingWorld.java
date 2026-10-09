@@ -4,7 +4,6 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.livingworld.config.LivingWorldConfig;
 import net.livingworld.world.biome.ClimateBiomeSource;
-import net.livingworld.world.gen.LivingTerrainDensityFunction;
 import net.livingworld.world.gen.WorldGenHandler;
 import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
@@ -17,7 +16,6 @@ public final class LivingWorld implements ModInitializer {
     @Override
     public void onInitialize() {
         LivingWorldConfig.INSTANCE.load(java.nio.file.Paths.get("config"));
-        LivingTerrainDensityFunction.register();
         ClimateBiomeSource.register();
         WorldGenHandler.register();
 
