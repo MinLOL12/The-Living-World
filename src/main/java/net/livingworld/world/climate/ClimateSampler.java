@@ -26,9 +26,10 @@ public final class ClimateSampler {
     public double sampleTemperature(int blockX, int blockY, int blockZ) {
         double sx = blockX * scale;
         double sz = blockZ * scale;
-        double lat = 1.0 - Math.abs(Math.IEEEremainder(blockZ * 0.0008, 2.0)) / 1.0;
-        lat = Math.max(0.0, Math.min(1.0, lat));
-        double baseTemp = lat * 0.6 + 0.2;
+        // Smooth equator/pole cycle (~22k blocks per half wave) instead of a
+        // sawtooth, which produced visible striped temperature bands.
+        double lat = Math.cos(blockZ * 0.00028);
+        double baseTemp = 0.42 + 0.38 * lat;
         double regional = tempNoiseLarge.sample(sx * 0.5, 0.0, sz * 0.5) * 0.35;
         double local = tempNoise.sample(sx, 0.0, sz) * 0.15;
         double elev = (blockY - 64) * -0.0065;
