@@ -9,10 +9,21 @@ import net.minecraft.util.math.random.Xoroshiro128PlusPlusRandom;
 import net.minecraft.world.gen.densityfunction.DensityFunction;
 
 /**
- * Wraps the vanilla overworld {@code finalDensity} and blends it toward the
- * height field produced by {@link TerrainSampler}. The vanilla function is
- * still sampled, so caves, ravines, aquifers and ore veins keep carving the
- * new terrain exactly like vanilla carves the old one.
+ * Drives the Overworld surface from the height field produced by
+ * {@link TerrainSampler}.
+ *
+ * <p>Unlike a naive "blend near the surface" approach (which produces floating
+ * shelves and a vanilla stone floor underneath, because the vanilla density
+ * re-appears below the blend window), this function owns the whole column:
+ * everything below the sampled height is solid, everything above is air, with
+ * a linear density gradient across the surface so surface rules, heightmaps
+ * and aquifers behave exactly like vanilla.
+ *
+ * <p>Caves are carved by subtracting a dedicated 3D cave field
+ * ({@link TerrainSampler#sampleCaveFactor}) below the surface, so caverns,
+ * spaghetti tunnels and worm tunnels appear in the new terrain without
+ * depending on vanilla's surface-relative cave density. Ore veins, aquifers
+ * and structures keep working because they only consume the final density.
  */
 public final class LivingTerrainDensityFunction implements DensityFunction {
     public static final Codec<LivingTerrainDensityFunction> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -22,14 +33,19 @@ public final class LivingTerrainDensityFunction implements DensityFunction {
 
     public static final CodecHolder<LivingTerrainDensityFunction> CODEC_HOLDER = CodecHolder.of(CODEC);
 
+    /** Density units per block of depth below the sampled surface height. */
+    private static final double HEIGHT_GRADIENT = 0.05;
+    private static final double BASE_CLAMP = 2.5;
+    private static final double CAVE_STRENGTH = 2.2;
+
     private static volatile long CURRENT_WORLD_SEED = 0L;
     private static volatile TerrainSampler CURRENT_SAMPLER;
 
+    /** Per-thread column cache: {packed x/z key, seed, height bits}. */
+    private static final ThreadLocal<long[]> COLUMN_CACHE = ThreadLocal.withInitial(() -> new long[3]);
+
     private final long seedHint;
     private final DensityFunction original;
-    private transient int lastX = Integer.MIN_VALUE;
-    private transient int lastZ = Integer.MIN_VALUE;
-    private transient double lastH;
 
     public LivingTerrainDensityFunction(long seedHint, DensityFunction original) {
         this.seedHint = seedHint;
@@ -57,43 +73,41 @@ public final class LivingTerrainDensityFunction implements DensityFunction {
         int bx = pos.blockX();
         int by = pos.blockY();
         int bz = pos.blockZ();
+
         TerrainSampler s = sampler();
-        double h;
-        if (bx == lastX && bz == lastZ) {
-            h = lastH;
-        } else {
-            h = s.sampleHeight(bx, bz);
-            lastX = bx;
-            lastZ = bz;
-            lastH = h;
+        double h = columnHeight(s, bx, bz);
+
+        double base = (h - by) * HEIGHT_GRADIENT;
+        if (base > BASE_CLAMP) {
+            base = BASE_CLAMP;
+        } else if (base < -BASE_CLAMP) {
+            base = -BASE_CLAMP;
         }
 
-        double originalDensity = original.sample(pos);
+        double cave = s.sampleCaveFactor(bx, by, bz, h);
+        double density = base - cave * CAVE_STRENGTH;
 
-        double desired = (h - by) / 80.0;
-        if (by < -48) desired = Math.max(desired, 1.0);
-        if (by > 300) desired = Math.min(desired, -1.0);
+        if (density > 3.0) return 3.0;
+        if (density < -3.0) return -3.0;
+        return density;
+    }
 
-        double dist = Math.abs(by - h);
-        double blend;
-        if (dist < 8) {
-            blend = 0.85;
-        } else if (dist < 24) {
-            blend = 0.85 * (1.0 - (dist - 8.0) / 16.0);
-        } else if (by > h + 50 || by < h - 20) {
-            blend = 0.0;
-        } else {
-            blend = 0.15;
+    /**
+     * Samples (and memoises per thread) the terrain height of a column.
+     * Chunk generation calls {@link #sample} for every Y of a column before
+     * moving to the next column, so a one-entry cache removes ~95% of the
+     * height-field evaluations.
+     */
+    private static double columnHeight(TerrainSampler sampler, int bx, int bz) {
+        long[] cache = COLUMN_CACHE.get();
+        long key = ((long) bx << 32) ^ (bz & 0xFFFFFFFFL);
+        long seed = CURRENT_WORLD_SEED;
+        if (cache[0] != key || cache[2] != seed) {
+            cache[0] = key;
+            cache[2] = seed;
+            cache[1] = Double.doubleToRawLongBits(sampler.sampleHeight(bx, bz));
         }
-
-        if (by < 0) blend *= 0.4;
-
-        if (originalDensity < -0.3 && by < h - 5 && by > -10) {
-            blend *= 0.15;
-        }
-
-        double r = originalDensity * (1.0 - blend) + desired * blend;
-        return Math.max(-3.0, Math.min(3.0, r));
+        return Double.longBitsToDouble(cache[1]);
     }
 
     @Override

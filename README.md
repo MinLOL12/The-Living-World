@@ -9,14 +9,16 @@ A Fabric mod for Minecraft 1.20.1 that overhauls Overworld terrain and biome pla
 - Gradual, natural transitions between landforms (continents → hills → plateaus → mountains).
 - Large-scale continental noise so landforms are geographically consistent across thousands of blocks.
 - Continuous terrain across chunk borders (deterministic per-block sampling).
-- Vanilla caves, ravines, ore veins, and underground structures preserved by blending the custom surface density with the vanilla final density (caves carve through the new terrain unchanged).
+- The custom height field owns the whole column (solid rock from the surface down to the deepslate floor, air above it), so there are no floating shelves, ghost layers or vanilla "floor" planes underneath the new terrain.
+- Cave systems carved into the new terrain by three layered 3D noise fields (cheese caverns, spaghetti tunnels, worm tunnels) that fade out below the surface skin and above the deepslate floor. Ore veins, aquifers and underground structures keep working because they only consume the final density.
 
 ### Climate & biomes
 - Regional temperature, humidity, and rainfall noise sampled at biome scale.
 - Temperature decreases with elevation (lapse rate) so high mountains have colder biomes.
 - Large, smooth climate regions with gradual edges.
-- Biome placement is overridden based on climate + altitude: oceans, beaches, plains, forests, birch forests, dark forests, taiga, snowy biomes, meadows, groves, snowy slopes, peaks (frozen / jagged / stony), windswept hills, savanna / savanna plateau, desert, jungle, swamp, windswept forest, and flower forests.
-- Nether and End are unchanged.
+- Biome placement is overridden based on climate + the *actual generated surface height* of each column: oceans and deep oceans only where the ground is below sea level, beaches at the coastline, then plains, forests, flower forests, birch forests, dark forests, taiga, snowy biomes, meadows, groves, snowy slopes, peaks (frozen / jagged / stony), windswept hills, savanna / savanna plateau, desert, jungle and swamp on the landmasses.
+- Caves receive the surface biome of their column, like vanilla.
+- Nether and End are unchanged (the Nether's multi-noise biome source is detected and skipped).
 
 ### World generation
 - Uses Minecraft 1.20.1's `NoiseRouter` density-function pipeline via a mixin that wraps the Overworld `finalDensity`.
@@ -70,7 +72,7 @@ Create a new world — newly generated chunks will use the overhauled terrain. E
 - `src/main/java/net/livingworld/config/LivingWorldConfig.java` — simple properties-file configuration.
 - `src/main/java/net/livingworld/world/gen/TerrainSampler.java` — multi-octave terrain height sampler (continents, mountains, plateaus, hills, ridges, valleys, rivers, floodplains, erosion, detail).
 - `src/main/java/net/livingworld/world/climate/ClimateSampler.java` — temperature / humidity / rainfall sampling including elevation temperature fall-off and latitude temperature bias.
-- `src/main/java/net/livingworld/world/gen/LivingTerrainDensityFunction.java` — custom `DensityFunction` that blends sampled terrain into the density pipeline while preserving caves/ravines/ores.
+- `src/main/java/net/livingworld/world/gen/LivingTerrainDensityFunction.java` — custom `DensityFunction` that replaces the Overworld `finalDensity` column profile with the sampled terrain height (linear surface gradient, clamped base) and subtracts the cave field so caverns/tunnels carve the new terrain.
 - `src/main/java/net/livingworld/world/gen/WorldGenHandler.java` — seeds the terrain sampler with the current world's seed when an Overworld loads.
 - `src/main/java/net/livingworld/mixin/ChunkGeneratorSettingsMixin.java` — patches the Overworld `NoiseRouter` so our custom density drives the surface.
 - `src/main/java/net/livingworld/mixin/OverworldBiomeSourceMixin.java` — overrides `MultiNoiseBiomeSource.getBiome` for the Overworld to pick biomes from the climate sampler.

@@ -15,6 +15,9 @@ public final class TerrainSampler {
     private final DoublePerlinNoiseSampler riverNoise;
     private final DoublePerlinNoiseSampler riverNoise2;
     private final DoublePerlinNoiseSampler valleyNoise;
+    private final DoublePerlinNoiseSampler caveCheeseNoise;
+    private final DoublePerlinNoiseSampler caveSpaghettiNoise;
+    private final DoublePerlinNoiseSampler caveWormNoise;
     private final double continentalScale;
     private final double mountainScale;
     private final double cfgScale;
@@ -44,6 +47,9 @@ public final class TerrainSampler {
         this.riverNoise = DoublePerlinNoiseSampler.create(splitter.split("lw_river"), -9, 1.0);
         this.riverNoise2 = DoublePerlinNoiseSampler.create(splitter.split("lw_river2"), -8, 1.0);
         this.valleyNoise = DoublePerlinNoiseSampler.create(splitter.split("lw_valley"), -8, 1.0);
+        this.caveCheeseNoise = DoublePerlinNoiseSampler.create(splitter.split("lw_cave_cheese"), -9, 1.0);
+        this.caveSpaghettiNoise = DoublePerlinNoiseSampler.create(splitter.split("lw_cave_spaghetti"), -8, 1.0);
+        this.caveWormNoise = DoublePerlinNoiseSampler.create(splitter.split("lw_cave_worm"), -7, 1.0);
     }
 
     public double sampleHeight(int blockX, int blockZ) {
@@ -142,6 +148,51 @@ public final class TerrainSampler {
         height -= erosionFactor * 6;
 
         return height;
+    }
+
+    /**
+     * Cave carving strength at a block position, in {@code [0, 1]}.
+     *
+     * <p>Three layered 3D noise fields reproduce the vanilla cave vocabulary
+     * without depending on vanilla's surface-relative cave density (which is
+     * anchored to the vanilla surface and therefore useless once the surface
+     * height has been replaced):
+     * <ul>
+     *   <li><b>cheese</b> — blobby caverns and rooms,</li>
+     *   <li><b>spaghetti</b> — long winding tunnels from the zero-crossing of a noise,</li>
+     *   <li><b>worm</b> — thinner, tighter tunnels.</li>
+     * </ul>
+     * Caves fade out within ~10 blocks below the surface so they never break
+     * the terrain skin, and stop above the deepslate floor.
+     */
+    public double sampleCaveFactor(int blockX, int blockY, int blockZ, double surfaceHeight) {
+        if (blockY > surfaceHeight - 9.0 || blockY < -52) return 0.0;
+
+        double fade = (surfaceHeight - 9.0 - blockY) / 10.0;
+        if (fade > 1.0) fade = 1.0;
+
+        double c = 0.0;
+
+        double cheese = caveCheeseNoise.sample(blockX * 0.016, blockY * 0.024, blockZ * 0.016);
+        if (cheese > 0.40) {
+            double t = (cheese - 0.40) / 0.22;
+            if (t > 1.0) t = 1.0;
+            c = t;
+        }
+
+        double spag = Math.abs(caveSpaghettiNoise.sample(blockX * 0.02, blockY * 0.03, blockZ * 0.02));
+        if (spag < 0.08) {
+            double t = 1.0 - spag / 0.08;
+            if (t > c) c = t;
+        }
+
+        double worm = Math.abs(caveWormNoise.sample(blockX * 0.03, blockY * 0.045, blockZ * 0.03));
+        if (worm < 0.055) {
+            double t = (1.0 - worm / 0.055) * 0.85;
+            if (t > c) c = t;
+        }
+
+        return c * fade;
     }
 
     public double sampleRiverFactor(int blockX, int blockZ) {
