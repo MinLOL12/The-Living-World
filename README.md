@@ -39,6 +39,13 @@ On first run the mod writes a config file at `config/the-living-world.properties
 | `enableClimateBiomes` | true  | Override biome placement with the climate system       |
 | `seedOffset`        | 0       | Offset added to the world seed for noise sampling      |
 
+## Dependencies
+
+- **Fabric Loader** >= 0.15.11 (Fabric API 0.92.x requires loader >= 0.15.6)
+- **Fabric API** 0.92.1+1.20.1 — required at runtime; the mod uses `ServerLifecycleEvents` and `ServerWorldEvents` from `fabric-lifecycle-events-v1`
+
+The build resolves Fabric API automatically through the `modImplementation "net.fabricmc.fabric-api:fabric-api:..."` dependency in `build.gradle` (version pinned in `gradle.properties`, repository declared in `build.gradle`).
+
 ## Building
 
 Requirements: Java 17.
