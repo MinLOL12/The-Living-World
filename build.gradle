@@ -12,6 +12,11 @@ base {
 
 repositories {
     mavenCentral()
+    // Required to resolve Fabric Loader and Fabric API (not published to Maven Central)
+    maven {
+        name = 'Fabric'
+        url = 'https://maven.fabricmc.net/'
+    }
 }
 
 dependencies {
